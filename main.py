@@ -4,6 +4,10 @@ import customtkinter
 import sqlite3
 
 
+#Глобальный список хранения ID заметок
+note_ids = []
+
+
 def db_start():
     print("Запуск БД")
     global conn, cur
@@ -17,36 +21,42 @@ def db_start():
 
 
 def update_notes_list():
-    print("Обновление списка заметок")
-    notes_list.delete(0, customtkinter.END)
+    global note_ids
 
-    #Получаем заметки хранящиеся в БД
-    cur.execute("SELECT * FROM notes")
+    #Чистим поле ввода
+    notes_list.delete(0, tk.END)
+    note_ids.clear()
+
+    cur.execute("SELECT id, note FROM notes")
     notes = cur.fetchall()
 
-    #Отображаем заметки в listbox
-    for note in notes:
-        note_text = note[1]
-        notes_list.insert(customtkinter.END, note_text)
+    for note_id, note_text in notes:
+        note_ids.append(note_id)
+        notes_list.insert(tk.END, note_text)
 
 
 def save_note():
-    print("Нажали кнопку Save")
-    note = note_entry.get()
-    cur.execute("INSERT INTO notes (note) VALUES(?)", (note,))
+    note = note_entry.get().strip()
+
+    if not note:
+        return
+
+    cur.execute("INSERT INTO notes(note) VALUES(?)",(note,))
     conn.commit()
+    note_entry.delete(0, tk.END)
     update_notes_list()
-    note_entry.delete(0, customtkinter.END)
 
 
 def delete_note():
-    print("Нажали кнопку Delete")
     index = notes_list.curselection()
-    if index:
-        selected_note = notes_list.get(index)
-        cur.execute("DELETE FROM notes WHERE note = ?", (selected_note,))
-        conn.commit()
-        update_notes_list()
+
+    if not index:
+        return
+
+    note_id = note_ids[index[0]]
+    cur.execute("DELETE FROM notes WHERE id = ?",(note_id,))
+    conn.commit()
+    update_notes_list()
 
 
 #ОФОРМЛЕНИЕ
